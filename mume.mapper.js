@@ -1,10 +1,8 @@
-var debugData;
-
 (function() {
 'use strict';
 
 var loadMap, mapData, mapDataDescIndex, indexRooms, findRoomByNameDesc,
-    buildRoomDisplay, getSectorAssetPath,
+    buildRoomDisplay, getSectorAssetPath, openMapWindow, globalMapWindow,
     ROOM_PIXELS = 48,
     // Indexes into mapData entries (using an array because it may be more
     // efficient to store the whole map).
@@ -79,7 +77,7 @@ buildRoomDisplay = function( room )
     display = new PIXI.DisplayObjectContainer();
 
     // load a PNG as background (sector type)
-    sector = new PIXI.Sprite.fromImage( getSectorAssetPath( room[MD_SECTOR] ) );
+    sector = PIXI.Sprite.fromImage( getSectorAssetPath( room[MD_SECTOR] ) );
     sector.height = sector.width = ROOM_PIXELS; // Just in case we got a wrong PNG here
     display.addChild( sector );
 
@@ -109,28 +107,44 @@ buildRoomDisplay = function( room )
     return display;
 }
 
-loadMap = function()
+openMapWindow = function()
 {
-    var renderer, mapWindow, stage, layer0;
+    var mapWindow;
 
     indexRooms();
 
     // Open a new window and make really sure it's blank
-    mapWindow = window.open( "about:blank", "mume-map", "dialog,minimizable,width=820,height=620" );
+    mapWindow = window.open( "map.html", "mume-map", "dialog,minimizable,width=820,height=620" );
     if ( mapWindow === null )
     {
         alert( "Your browser refused to open the map window, you have to allow it "
-            +"somewhere in the top right corner of your screen. Look for a "
+            +"somewhere near the top right corner of your screen. Look for a "
             +"notification about blocking popups." );
         return;
     }
-    mapWindow.document.body = mapWindow.document.createElement( "body" ); // In case we're reusing a window
+    console.log( "mapWindow state: ", mapWindow.document.readyState );
+    globalMapWindow = mapWindow; // Hack until I objectify this
+    if ( mapWindow.document.readyState === "complete" )
+        loadMap();
+    else
+        mapWindow.addEventListener( "load", loadMap );
+}
+
+loadMap = function()
+{
+    var renderer, stage, layer0, animate;
 
     // Set the Pixi viewport as the content of that new window
     renderer = PIXI.autoDetectRenderer( 800, 600 );
-    mapWindow.document.body.appendChild( renderer.view );
+    if ( globalMapWindow.document.getElementById( "map" ) )
+        globalMapWindow.document.body.replaceChild(
+            renderer.view,
+            globalMapWindow.document.getElementById( "map" ) );
+    else
+        globalMapWindow.document.body.appendChild( renderer.view );
+    renderer.view.id = "map";
 
-    // Add the rooms to a base layer (later we need more layers)
+    // Add the rooms to a base layer (later we'll need more layers)
     layer0 = new PIXI.DisplayObjectContainer();
     mapData.forEach( function( room )
     {
@@ -140,13 +154,16 @@ loadMap = function()
     // And set the stage
     stage = new PIXI.Stage( 0x6e6e6e );
     stage.addChild( layer0 );
-    renderer.render( stage );
+    animate = function() {
+        globalMapWindow.requestAnimationFrame( animate );
+        renderer.render( stage );
+    };
+    globalMapWindow.requestAnimationFrame( animate );
 
     return;
-    //debugData = [ stage, layer0 ];
 }
 
-window.addEventListener( "load", loadMap );
+window.addEventListener( "load", openMapWindow );
 
 mapData = [
     /* 0 */ [
