@@ -364,7 +364,7 @@ MumeXmlParser.prototype.resetPlainText = function()
  *
  * Pardon the write-only RE, JavaScript doesn't have /x.
  */
-MumeXmlParser.TAG_RE = /([^<]*)<(/?)(\w+)(?: ([^/>]+))?(/?)>([^<]*)/g;
+MumeXmlParser.TAG_RE = /([^<]*)<(\/?)(\w+)(?: ([^/>]+))?(\/?)>([^<]*)/g;
 
 MumeXmlParser.decodeEntities = function( text )
 {
@@ -444,7 +444,7 @@ MumeXmlParser.prototype.pushText = function( text )
     }
 }
 
-MumeXmlParser.prototype.startTag( tagName, attr )
+MumeXmlParser.prototype.startTag = function( tagName, attr )
 {
     this.tagStack.push( { name: tagName, attr: attr, text: "" } );
 
@@ -455,7 +455,7 @@ MumeXmlParser.prototype.startTag( tagName, attr )
     return;
 }
 
-MumeXmlParser.prototype.endTag( tagName )
+MumeXmlParser.prototype.endTag = function( tagName )
 {
     var i, matchingTagIndex, error, topTag;
 
