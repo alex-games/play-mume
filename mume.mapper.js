@@ -1,4 +1,4 @@
-var MumeMap, MumeXmlParser, MumeMapDisplay;
+var MumeMap, MumeXmlParser, MumeMapDisplay, MumeMapData;
 
 (function() {
 'use strict';
@@ -51,7 +51,7 @@ MumeMap = function( containerElementName )
     this.display = new MumeMapDisplay( containerElementName, this.mapData );
 }
 
-MumeMap.prototype.init = function()
+MumeMap.prototype.load = function()
 {
     this.mapData.load();
     this.display.loadMap();
@@ -88,7 +88,7 @@ openMapWindow = function()
 MumeMapData = function()
 {
     this.data = hardcodedMapData;
-    this.mapDataDescIndex = null;
+    this.descIndex = null;
 }
 
 MumeMapData.prototype.load = function()
@@ -101,15 +101,15 @@ MumeMapData.prototype.load = function()
 // hash of the room to save memory later. To be tested.
 MumeMapData.prototype.indexRooms = function()
 {
-    this.mapDataDescIndex = {};
+    this.descIndex = {};
 
     var i;
-    for ( i = 0; i < this.mapData.length; ++i )
+    for ( i = 0; i < this.data.length; ++i )
     {
         var key, room;
-        room = this.mapData[i];
+        room = this.data[i];
         key = room[MD_NAME] + "\n" + room[MD_DESC];
-        this.mapDataDescIndex[key] = i;
+        this.descIndex[key] = i;
     }
 }
 
@@ -117,7 +117,7 @@ MumeMapData.prototype.indexRooms = function()
 MumeMapData.prototype.findRoomByNameDesc = function( name, desc )
 {
     var num;
-    num = this.mapDataDescIndex[name + "\n" + desc];
+    num = this.descIndex[name + "\n" + desc];
     return num;
 }
 
