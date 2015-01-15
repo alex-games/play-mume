@@ -282,14 +282,14 @@ hardcodedMapData = [
  * </xml>XML mode is now off.
  *
  * Matching event output:
- * { tag: "prompt",      attr: "",          text: "!f- CW>" }
- * { tag: "movement",    attr: "dir=north", text: "" }
- * { tag: "name",        attr: "",          text: "A Flat Marsh" }
- * { tag: "description", attr: "",          text: "The few... sombre\n...moss.\n" }
- * { tag: "room",        attr: "",          text: "A large green...mud.\n" }
- * { tag: "exits",       attr: "",          text: "Exits: north, east, south.\n" }
- * { tag: "prompt",      attr: "",          text: "!%- CW>" }
- * { tag: "xml",         attr: "",          text: "" }
+ * { name: "prompt",      attr: "",          text: "!f- CW>" }
+ * { name: "movement",    attr: "dir=north", text: "" }
+ * { name: "name",        attr: "",          text: "A Flat Marsh" }
+ * { name: "description", attr: "",          text: "The few... sombre\n...moss.\n" }
+ * { name: "room",        attr: "",          text: "A large green...mud.\n" }
+ * { name: "exits",       attr: "",          text: "Exits: north, east, south.\n" }
+ * { name: "prompt",      attr: "",          text: "!%- CW>" }
+ * { name: "xml",         attr: "",          text: "" }
  *
  * Tag hierarchy does not carry a lot of meaning and is not conveyed in the
  * events sent. The text of the XML is always empty as it would be useless but
@@ -297,12 +297,16 @@ hardcodedMapData = [
  *
  * At the time of writing, MUME emits at most 1 attribute for tags encountered
  * during mortal sessions, and never quotes it.
+ *
+ * One registers to events by calling:
+ * parser.on( "tagend", function( tag ) { /* Use tag.name etc here *./ } );
  */
-MumeXmlParser = function( callback )
+MumeXmlParser = function()
 {
     this.tagStack = [];
     this.plainText = "";
-    this.callback = callback;
+
+    contra.emitter( this );
 }
 
 MumeXmlParser.prototype.topTag = function()
@@ -396,13 +400,13 @@ MumeXmlParser.prototype.pushText = function( text )
 
     topTag = this.topTag();
 
-    if ( !topTag || topTag.tag === "xml" )
+    if ( !topTag || topTag.name === "xml" )
     {
         this.plainText += text;
     }
     else if ( topTag.text.length > 4096 )
     {
-        error = "Probable bug: run-away MumeXmlParser tag " + topTag.tag
+        error = "Probable bug: run-away MumeXmlParser tag " + topTag.name
             + ", text: " + topTag.text.substr( 0, 50 );
         this.tagStack.pop();
         throw error;
@@ -415,17 +419,23 @@ MumeXmlParser.prototype.pushText = function( text )
 
 MumeXmlParser.prototype.startTag( tagName, attr )
 {
-    this.tagStack.push( { tag: tagName, attr: attr, text: "" } );
+    this.tagStack.push( { name: tagName, attr: attr, text: "" } );
+
+    if ( this.tagStack.length > 5 )
+        throw "Bug: deeply nested MumeXmlParser tags: "
+            + this.tagStack.join();
+
+    return;
 }
 
 MumeXmlParser.prototype.endTag( tagName )
 {
-    var i, matchingTagIndex, error;
+    var i, matchingTagIndex, error, topTag;
 
     // Find the uppermost tag in the stack which matches tagName
     for ( i = this.tagStack.length - 1; i >= 0; ++i )
     {
-        if ( this.tagStack[i].tag === tagName )
+        if ( this.tagStack[i].name === tagName )
         {
             matchingTagIndex = i;
             break;
@@ -445,8 +455,8 @@ MumeXmlParser.prototype.endTag( tagName )
         throw error;
     }
 
-    this.callback( this.topTag() );
-    this.tagStack.pop();
+    topTag = this.tagStack.pop();
+    this.emit( 'tagend', topTag );
 }
 
 })();
