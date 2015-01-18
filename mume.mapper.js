@@ -5,25 +5,7 @@ var MumeMap, MumeXmlParser, MumeMapDisplay, MumeMapData, MumePathMachine;
 
 var hardcodedMapData,
     ROOM_PIXELS = 48,
-    // Indexes into mapData entries (using an array because it may be more
-    // efficient to store the whole map).
-    MD_X         =  0,
-    MD_Y         =  1,
-    MD_Z         =  2,
-    MD_NORTH     =  3,
-    MD_EAST      =  4,
-    MD_SOUTH     =  5,
-    MD_WEST      =  6,
-    MD_UP        =  7,
-    MD_DOWN      =  8,
-    MD_SECTOR    =  9,
-    MD_MOBFLAGS  = 10,
-    MD_LOADFLAGS = 11,
-    MD_LIGHT     = 12,
-    MD_RIDABLE   = 13,
-    MD_NAME      = 14,
-    MD_DESC      = 15,
-    SECT_UNDEFINED      =  0, // Only for MM2 compatibility...
+    SECT_UNDEFINED      =  0,
     SECT_INSIDE         =  1,
     SECT_CITY           =  2,
     SECT_FIELD          =  3,
@@ -38,7 +20,7 @@ var hardcodedMapData,
     SECT_BRUSH          = 12,
     SECT_TUNNEL         = 13,
     SECT_CAVERN         = 14,
-    SECT_DEATHTRAP      = 15, // in MUME it's actually a flag
+    SECT_DEATHTRAP      = 15,
     SECT_COUNT = SECT_DEATHTRAP;
 
 
@@ -108,7 +90,7 @@ MumePathMachine.prototype.enterRoom = function( name, desc )
     if ( roomIds !== undefined )
     {
         room = this.mapData.data[roomIds[0]];
-        this.emit( "movement", room[MD_X], room[MD_Y] );
+        this.emit( "movement", room.X, room.Y );
     }
     else
     {
@@ -125,6 +107,12 @@ MumeMapData = function()
     this.data = hardcodedMapData;
     this.descIndex = null;
 }
+
+// These properties should exist for all rooms loaded from an external
+// data source.
+MumeMapData.REQUIRED_PROPS = [
+    "X", "Y", "Z", "NORTH", "EAST", "SOUTH", "WEST", "UP", "DOWN",
+    "SECTOR", "MOBFLAGS", "LOADFLAGS", "LIGHT", "RIDABLE", "NAME", "DESC" ];
 
 MumeMapData.prototype.load = function()
 {
@@ -143,7 +131,7 @@ MumeMapData.prototype.indexRooms = function()
     {
         var key, room;
         room = this.data[i];
-        key = room[MD_NAME] + "\n" + room[MD_DESC];
+        key = room.NAME + "\n" + room.DESC;
         if ( this.descIndex[key] === undefined )
             this.descIndex[key] = [ i ];
         else
@@ -175,22 +163,28 @@ MumeMapData.prototype.findRoomIdsByNameDesc = function( name, desc )
     return rooms;
 }
 
+// TODO: this should be loaded from some external JSON source, same format
+// (with a sanity check).
 hardcodedMapData = [
-    /* 0 */ [
-        5, 5, 0, null, 1, null, null, null, null,
-        SECT_CITY, 0, 0, null, null,
-        "Fortune's Delving",
+    /* 0 */ {
+        X: 5, Y: 5, Z: 0,
+        NORTH: null, EAST: 1, SOUTH: null, WEST: null, UP: null, DOWN: null,
+        SECTOR: 2 /* SECT_CITY */, MOBFLAGS: 0, LOADFLAGS: 0, LIGHT: null, RIDEABLE: null,
+        NAME: "Fortune's Delving",
+        DESC:
         "A largely ceremonial hall, it was the first mineshaft that led down to what is\n"
         +"now the second level of this Dwarven city. Dwarves hustle and bustle up and\n"
         +"down the great staircase at whose top you now stand. Guards stand watch by the\n"
         +"stairs, scowling at non-Dwarves, and a large sign is etched into the stone\n"
         +"above them. It has been a long time since the eyes of Men or Elves have been\n"
         +"welcome in the strongholds of the Dwarves, and this place is no exception.\n"
-    ],
-    /* 1 */ [
-        6, 5, 0, null, null, null, 1, null, null,
-        SECT_INSIDE, 0, 0, null, null,
-        "Trader's Way",
+    },
+    /* 1 */ {
+        X: 6, Y: 5, Z: 0,
+        NORTH: null, EAST: null, SOUTH: null, WEST: 1, UP: null, DOWN: null,
+        SECTOR: 1 /* SECT_INSIDE */, MOBFLAGS: 0, LOADFLAGS: 0, LIGHT: null, RIDEABLE: null,
+        NAME: "Trader's Way",
+        DESC:
         "This wide way has been modelled as an avenue, in the style of Elves and Men. To\n"
         +"the sides are shops selling all sorts of goods, bustling with Dwarves and the\n"
         +"occasional Man or Elf. Between the shops bright outdoor scenes are painted and\n"
@@ -198,7 +192,7 @@ hardcodedMapData = [
         +"can be seen a bright blue sky dotted with puffy white clouds. This part of the\n"
         +"way is particularly busy, as it intersects the main path from the outside to\n"
         +"the deeper parts of the Dwarven caves.\n"
-    ]
+    }
 ];
 
 
@@ -254,7 +248,7 @@ MumeMapDisplay.prototype.buildMapDisplay = function( stage )
 
     // Add the current room yellow square
     this.herePointer = MumeMapDisplay.buildHerePointer();
-    this.repositionHere( this.mapData.data[0][MD_X], this.mapData.data[0][MD_Y] );
+    this.repositionHere( this.mapData.data[0].X, this.mapData.data[0].Y );
     map.addChild( this.herePointer );
 
     // And set the stage
@@ -283,7 +277,7 @@ MumeMapDisplay.buildRoomDisplay = function( room )
     display = new PIXI.DisplayObjectContainer();
 
     // load a PNG as background (sector type)
-    sector = PIXI.Sprite.fromImage( MumeMapDisplay.getSectorAssetPath( room[MD_SECTOR] ) );
+    sector = PIXI.Sprite.fromImage( MumeMapDisplay.getSectorAssetPath( room.SECTOR ) );
     sector.height = sector.width = ROOM_PIXELS; // Just in case we got a wrong PNG here
     display.addChild( sector );
 
@@ -292,12 +286,15 @@ MumeMapDisplay.buildRoomDisplay = function( room )
     borders.lineStyle( 2, 0x000000, 1 );
 
     [   // direction MD entry, start coords, end coords
-        [ MD_NORTH, 0, 0, ROOM_PIXELS, 0 ],
-        [ MD_EAST,  ROOM_PIXELS, 0, ROOM_PIXELS, ROOM_PIXELS ],
-        [ MD_SOUTH, ROOM_PIXELS, ROOM_PIXELS, 0, ROOM_PIXELS ],
-        [ MD_WEST,  0, ROOM_PIXELS, 0, 0 ]
+        [ "NORTH", 0, 0, ROOM_PIXELS, 0 ],
+        [ "EAST",  ROOM_PIXELS, 0, ROOM_PIXELS, ROOM_PIXELS ],
+        [ "SOUTH", ROOM_PIXELS, ROOM_PIXELS, 0, ROOM_PIXELS ],
+        [ "WEST",  0, ROOM_PIXELS, 0, 0 ]
     ].forEach( function( border )
     {
+        // XXX: room["dir"] syntax may break some Javascript engine
+        // optimizations, test it (with a complete map) and refactor if
+        // needed.
         if ( typeof room[ border[0] ] !== "number" )
         {
             borders.moveTo( border[1], border[2] );
@@ -307,7 +304,7 @@ MumeMapDisplay.buildRoomDisplay = function( room )
     display.addChild( borders );
 
     // Position the room display in its layer
-    display.position = new PIXI.Point( room[MD_X] * ROOM_PIXELS, room[MD_Y] * ROOM_PIXELS );
+    display.position = new PIXI.Point( room.X * ROOM_PIXELS, room.Y * ROOM_PIXELS );
 
     display.cacheAsBitmap = true;
     return display;
