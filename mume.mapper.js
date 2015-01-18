@@ -386,10 +386,11 @@ MumeXmlParser = function()
 {
     this.clear();
 
-    /* NB: async events may end up delivered in the wrong order. If our target
-     * (MumePathMachine) takes too much time processing them, we may have to
-     * add an intermediate step that reassembles the room before delivering
-     * async to the path machine.
+    /* NB: async events may end up delivered non-sequentially, whereas order
+     * matters for tags. If our subscriber (MumePathMachine) takes too much
+     * time processing, we may have to add an intermediate step that
+     * reassembles the room before delivering asynchronously to the path
+     * machine.
      */
     contra.emitter( this, { async: false } );
 }
